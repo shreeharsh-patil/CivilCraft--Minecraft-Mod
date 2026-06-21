@@ -65,6 +65,21 @@ public class DatabaseManager {
                     "timestamp INTEGER NOT NULL," +
                     "FOREIGN KEY (entity_uuid) REFERENCES agent_memory(entity_uuid)" +
                     ");");
+
+            // Town Technology Table
+            stmt.execute("CREATE TABLE IF NOT EXISTS town_tech (" +
+                    "town_id TEXT NOT NULL," +
+                    "tech_id TEXT NOT NULL," +
+                    "PRIMARY KEY (town_id, tech_id)" +
+                    ");");
+
+            // Diplomacy Table
+            stmt.execute("CREATE TABLE IF NOT EXISTS diplomacy (" +
+                    "town_a TEXT NOT NULL," +
+                    "town_b TEXT NOT NULL," +
+                    "relation_state TEXT NOT NULL," +
+                    "PRIMARY KEY (town_a, town_b)" +
+                    ");");
         }
     }
 
@@ -158,5 +173,201 @@ public class DatabaseManager {
             e.printStackTrace();
         }
         return builder.toString();
+    }
+
+    public static void createTown(String townId, String name, String founderUuid) {
+        try (Connection conn = getConnection();
+             java.sql.PreparedStatement ps = conn.prepareStatement(
+                     "INSERT INTO towns (id, name, founder_uuid, balance, created_at) VALUES (?, ?, ?, ?, ?)")) {
+            ps.setString(1, townId);
+            ps.setString(2, name);
+            ps.setString(3, founderUuid);
+            ps.setInt(4, 100); // 100 coins initial balance
+            ps.setLong(5, System.currentTimeMillis());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void claimChunk(String dimension, int chunkX, int chunkZ, String townId) {
+        try (Connection conn = getConnection();
+             java.sql.PreparedStatement ps = conn.prepareStatement(
+                     "INSERT OR REPLACE INTO claims (dimension, chunk_x, chunk_z, town_id) VALUES (?, ?, ?, ?)")) {
+            ps.setString(1, dimension);
+            ps.setInt(2, chunkX);
+            ps.setInt(3, chunkZ);
+            ps.setString(4, townId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static String getChunkOwnerTownId(String dimension, int chunkX, int chunkZ) {
+        try (Connection conn = getConnection();
+             java.sql.PreparedStatement ps = conn.prepareStatement(
+                     "SELECT town_id FROM claims WHERE dimension = ? AND chunk_x = ? AND chunk_z = ?")) {
+            ps.setString(1, dimension);
+            ps.setInt(2, chunkX);
+            ps.setInt(3, chunkZ);
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("town_id");
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static String getTownName(String townId) {
+        try (Connection conn = getConnection();
+             java.sql.PreparedStatement ps = conn.prepareStatement(
+                     "SELECT name FROM towns WHERE id = ?")) {
+            ps.setString(1, townId);
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("name");
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static boolean isTownMember(String townId, String playerUuid) {
+        try (Connection conn = getConnection();
+             java.sql.PreparedStatement ps = conn.prepareStatement(
+                     "SELECT id FROM towns WHERE id = ? AND founder_uuid = ?")) {
+            ps.setString(1, townId);
+            ps.setString(2, playerUuid);
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public static boolean depositCoins(String townId, int amount) {
+        try (Connection conn = getConnection();
+             java.sql.PreparedStatement ps = conn.prepareStatement(
+                     "UPDATE towns SET balance = balance + ? WHERE id = ?")) {
+            ps.setInt(1, amount);
+            ps.setString(2, townId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public static boolean withdrawCoins(String townId, int amount) {
+        try (Connection conn = getConnection();
+             java.sql.PreparedStatement ps = conn.prepareStatement(
+                     "SELECT balance FROM towns WHERE id = ?")) {
+            ps.setString(1, townId);
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    int balance = rs.getInt("balance");
+                    if (balance >= amount) {
+                        try (java.sql.PreparedStatement psUpdate = conn.prepareStatement(
+                                "UPDATE towns SET balance = balance - ? WHERE id = ?")) {
+                            psUpdate.setInt(1, amount);
+                            psUpdate.setString(2, townId);
+                            return psUpdate.executeUpdate() > 0;
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public static int getTownBalance(String townId) {
+        try (Connection conn = getConnection();
+             java.sql.PreparedStatement ps = conn.prepareStatement(
+                     "SELECT balance FROM towns WHERE id = ?")) {
+            ps.setString(1, townId);
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("balance");
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    public static void unlockTech(String townId, String techId) {
+        try (Connection conn = getConnection();
+             java.sql.PreparedStatement ps = conn.prepareStatement(
+                     "INSERT OR IGNORE INTO town_tech (town_id, tech_id) VALUES (?, ?)")) {
+            ps.setString(1, townId);
+            ps.setString(2, techId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static boolean isTechUnlocked(String townId, String techId) {
+        try (Connection conn = getConnection();
+             java.sql.PreparedStatement ps = conn.prepareStatement(
+                     "SELECT town_id FROM town_tech WHERE town_id = ? AND tech_id = ?")) {
+            ps.setString(1, townId);
+            ps.setString(2, techId);
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public static void setRelation(String townA, String townB, String state) {
+        // Ensure lexicographical order to prevent duplicates like (A, B) and (B, A)
+        String first = townA.compareTo(townB) < 0 ? townA : townB;
+        String second = townA.compareTo(townB) < 0 ? townB : townA;
+
+        try (Connection conn = getConnection();
+             java.sql.PreparedStatement ps = conn.prepareStatement(
+                     "INSERT OR REPLACE INTO diplomacy (town_a, town_b, relation_state) VALUES (?, ?, ?)")) {
+            ps.setString(1, first);
+            ps.setString(2, second);
+            ps.setString(3, state);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static String getRelation(String townA, String townB) {
+        if (townA.equals(townB)) return "SAME_TOWN";
+        String first = townA.compareTo(townB) < 0 ? townA : townB;
+        String second = townA.compareTo(townB) < 0 ? townB : townA;
+
+        try (Connection conn = getConnection();
+             java.sql.PreparedStatement ps = conn.prepareStatement(
+                     "SELECT relation_state FROM diplomacy WHERE town_a = ? AND town_b = ?")) {
+            ps.setString(1, first);
+            ps.setString(2, second);
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("relation_state");
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return "NEUTRAL"; // Default relation
     }
 }
