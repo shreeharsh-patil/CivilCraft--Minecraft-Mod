@@ -80,4 +80,83 @@ public class DatabaseManager {
             dataSource.close();
         }
     }
+
+    public static void registerAgent(String uuid, String name, String personality) {
+        try (Connection conn = getConnection();
+             java.sql.PreparedStatement ps = conn.prepareStatement(
+                     "INSERT OR IGNORE INTO agent_memory (entity_uuid, personality_json, summary, last_interaction) VALUES (?, ?, ?, ?)")) {
+            ps.setString(1, uuid);
+            com.google.gson.JsonObject obj = new com.google.gson.JsonObject();
+            obj.addProperty("name", name);
+            obj.addProperty("personality", personality);
+            ps.setString(2, obj.toString());
+            ps.setString(3, "Initial state of " + name);
+            ps.setLong(4, System.currentTimeMillis());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static com.google.gson.JsonObject getAgentInfo(String uuid) {
+        try (Connection conn = getConnection();
+             java.sql.PreparedStatement ps = conn.prepareStatement(
+                     "SELECT personality_json FROM agent_memory WHERE entity_uuid = ?")) {
+            ps.setString(1, uuid);
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    String json = rs.getString("personality_json");
+                    return com.google.gson.JsonParser.parseString(json).getAsJsonObject();
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static void saveDialogueLog(String uuid, String speaker, String message) {
+        try (Connection conn = getConnection();
+             java.sql.PreparedStatement ps = conn.prepareStatement(
+                     "INSERT INTO dialogue_logs (entity_uuid, speaker_name, message, timestamp) VALUES (?, ?, ?, ?)")) {
+            ps.setString(1, uuid);
+            ps.setString(2, speaker);
+            ps.setString(3, message);
+            ps.setLong(4, System.currentTimeMillis());
+            ps.executeUpdate();
+
+            // Update last interaction timestamp
+            try (java.sql.PreparedStatement ps2 = conn.prepareStatement(
+                    "UPDATE agent_memory SET last_interaction = ? WHERE entity_uuid = ?")) {
+                ps2.setLong(1, System.currentTimeMillis());
+                ps2.setString(2, uuid);
+                ps2.executeUpdate();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static String getRecentDialogueHistory(String uuid, int limit) {
+        StringBuilder builder = new StringBuilder();
+        try (Connection conn = getConnection();
+             java.sql.PreparedStatement ps = conn.prepareStatement(
+                     "SELECT speaker_name, message FROM dialogue_logs WHERE entity_uuid = ? ORDER BY timestamp DESC LIMIT ?")) {
+            ps.setString(1, uuid);
+            ps.setInt(2, limit);
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                java.util.List<String> logs = new java.util.ArrayList<>();
+                while (rs.next()) {
+                    logs.add(rs.getString("speaker_name") + ": " + rs.getString("message"));
+                }
+                // Reverse logs to make it chronological
+                for (int i = logs.size() - 1; i >= 0; i--) {
+                    builder.append(logs.get(i)).append("\n");
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return builder.toString();
+    }
 }
