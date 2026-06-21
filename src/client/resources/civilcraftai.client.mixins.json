@@ -1,10 +1,8 @@
 {
 	"required": true,
-	"package": "com.example.mixin",
+	"package": "com.civilcraftai.client.mixin",
 	"compatibilityLevel": "JAVA_21",
-	"mixins": [
-		"ExampleMixin"
-	],
+	"client": [],
 	"injectors": {
 		"defaultRequire": 1
 	},

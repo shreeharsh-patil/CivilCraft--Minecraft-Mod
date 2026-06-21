@@ -1,9 +1,9 @@
 {
 	"schemaVersion": 1,
-	"id": "modid",
+	"id": "civilcraftai",
 	"version": "${version}",
-	"name": "Example Mod",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"name": "CivilCraft AI",
+	"description": "Ultimate Minecraft Civilization Mod with LLM-powered AI agents.",
 	"authors": [
 		"Me!"
 	],
@@ -12,20 +12,20 @@
 		"sources": "https://github.com/FabricMC/fabric-example-mod"
 	},
 	"license": "CC0-1.0",
-	"icon": "assets/modid/icon.png",
+	"icon": "assets/civilcraftai/icon.png",
 	"environment": "*",
 	"entrypoints": {
 		"main": [
-			"com.example.ExampleMod"
+			"com.civilcraftai.CivilCraftAI"
 		],
 		"client": [
-			"com.example.client.ExampleModClient"
+			"com.civilcraftai.client.CivilCraftAIClient"
 		]
 	},
 	"mixins": [
-		"modid.mixins.json",
+		"civilcraftai.mixins.json",
 		{
-			"config": "modid.client.mixins.json",
+			"config": "civilcraftai.client.mixins.json",
 			"environment": "client"
 		}
 	],
