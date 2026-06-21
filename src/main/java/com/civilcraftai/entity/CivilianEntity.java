@@ -4,7 +4,7 @@ import net.minecraft.entity.EntityType;
 import net.minecraft.entity.SpawnReason;
 import net.minecraft.entity.attribute.DefaultAttributeContainer;
 import net.minecraft.entity.attribute.EntityAttributes;
-import net.minecraft.entity.mob.PathfinderMob;
+import net.minecraft.entity.mob.PathAwareEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
@@ -19,20 +19,20 @@ import com.civilcraftai.agent.behavior.BehaviorNode;
 import com.civilcraftai.agent.behavior.SelectorNode;
 import com.google.gson.JsonObject;
 
-public class CivilianEntity extends PathfinderMob {
+public class CivilianEntity extends PathAwareEntity {
     private String npcName = "Citizen";
     private String personality = "Hardworking and curious";
     private BehaviorNode behaviorTree;
     private int behaviorTickCooldown = 0;
     private boolean dbInitialized = false;
 
-    public CivilianEntity(EntityType<? extends PathfinderMob> entityType, World world) {
+    public CivilianEntity(EntityType<? extends PathAwareEntity> entityType, World world) {
         super(entityType, world);
         this.setupBehaviorTree();
     }
 
     public static DefaultAttributeContainer.Builder createCivilianAttributes() {
-        return PathfinderMob.createMobAttributes()
+        return PathAwareEntity.createMobAttributes()
                 .add(EntityAttributes.GENERIC_MAX_HEALTH, 20.0)
                 .add(EntityAttributes.GENERIC_MOVEMENT_SPEED, 0.25)
                 .add(EntityAttributes.GENERIC_FOLLOW_RANGE, 32.0);

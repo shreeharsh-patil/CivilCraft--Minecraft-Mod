@@ -11,9 +11,9 @@ public record ClaimBorderSyncPayload(int chunkX, int chunkZ, String townName) im
 
     public static final PacketCodec<PacketByteBuf, ClaimBorderSyncPayload> CODEC = PacketCodec.of(
         (buf, packet) -> {
-            buf.writeInt(packet.chunkX);
-            buf.writeInt(packet.chunkZ);
-            buf.writeString(packet.townName);
+            buf.writeInt(packet.chunkX());
+            buf.writeInt(packet.chunkZ());
+            buf.writeString(packet.townName());
         },
         buf -> new ClaimBorderSyncPayload(buf.readInt(), buf.readInt(), buf.readString())
     );
